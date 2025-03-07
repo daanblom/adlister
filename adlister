@@ -1,0 +1,53 @@
+#!/bin/bash
+
+welcome () {
+echo "            .___.__  .__          __                 "
+echo "_____     __| _/|  | |__| _______/  |_  ___________  "
+echo "\__  \   / __ | |  | |  |/  ___/\   __\/ __ \_  __ \ "
+echo " / __ \_/ /_/ | |  |_|  |\___ \  |  | \  ___/|  | \/ "
+echo "(____  /\____ | |____/__/____  > |__|  \___  >__|    "
+echo "     \/      \/              \/            \/        "
+echo "                          v0.1 - github.com/daanblom"
+echo ""
+}
+
+check () {
+  if [ ! -d .data ] ; then
+    mkdir .data
+  fi
+
+  if [ ! -d .srv ] ; then
+    mkdir .srv
+  fi
+}
+
+fetch () {
+  while IFS= read -r i; do
+    wget -t 10 -q --show-progress -O ".data/$(basename "$i")" "$i"
+  done < source.txt
+}
+
+process () {
+  cat .data/* > .srv/all.txt
+  sort -u .srv/all.txt > adlist.txt
+}
+
+cleanUp () {
+  rm -rf .data
+  rm -rf .srv
+}
+
+clear
+check
+clear
+welcome
+echo "Fetching ad lists"
+fetch
+clear
+welcome
+echo "Combining into single list..."
+process
+clear
+welcome
+cleanUp
+echo "Done! The adlist.txt file has been created"
