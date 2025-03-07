@@ -1,5 +1,7 @@
 #!/bin/bash
 
+output="adlist.txt"
+
 welcome () {
 echo "            .___.__  .__          __                 "
 echo "_____     __| _/|  | |__| _______/  |_  ___________  "
@@ -29,7 +31,7 @@ fetch () {
 
 process () {
   cat .data/* > .srv/all.txt
-  sort -u .srv/all.txt > adlist.txt
+  sort -u .srv/all.txt > $output
 }
 
 cleanUp () {
