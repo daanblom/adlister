@@ -13,8 +13,8 @@ The script performs the following operations:
 1. **Clone this repository:**
 
    ```bash
-   git clone https://github.com/yourusername/adlist-fetcher.git
-   cd adlist-fetcher
+   git clone https://github.com/yourusername/adlister.git
+   cd adlister
    ```
 
 2. **Run the script:**
@@ -22,7 +22,7 @@ The script performs the following operations:
    The script can be executed by running:
 
    ```bash
-   ./adlist-fetcher.sh
+   ./adlister
    ```
 
    This will:
