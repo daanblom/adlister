@@ -1,6 +1,72 @@
 #!/bin/bash
 
+# adlister - Ad list downloader and processor
+# Version: 0.2
+# Description: Downloads and combines ad block lists from multiple sources
+
+# Configuration
+VERSION="0.2"
 output="adlist.txt"
+log_file="adlister.log"
+temp_dir=".data"
+srv_dir=".srv"
+logging_enabled=true
+
+# Help message
+show_help() {
+    cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Downloads and combines ad block lists from multiple sources.
+
+Options:
+    -h          Show this help message
+    -v          Show version
+    -l          Toggle logging (off by default)
+
+EOF
+    exit 0
+}
+
+show_version() {
+    echo "adlister version $VERSION"
+    exit 0
+}
+
+# Parse command line arguments
+while getopts "hvl" opt; do
+    case $opt in
+        h)
+            show_help
+            ;;
+        v)
+            show_version
+            ;;
+        l)
+            logging_enabled=true
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            show_help
+            ;;
+    esac
+done
+
+# Logging function
+log() {
+    local message="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    if [ "$logging_enabled" = true ]; then
+        echo "$message" | tee -a "$log_file"
+    else
+        echo "$message"
+    fi
+}
+
+# Initialize log file if logging is enabled
+if [ "$logging_enabled" = true ]; then
+    : > "$log_file"  # Clear/create log file
+    log "Logging initialized"
+fi
 
 welcome () {
 echo "            .___.__  .__          __                 "
@@ -9,47 +75,89 @@ echo "\__  \   / __ | |  | |  |/  ___/\   __\/ __ \_  __ \ "
 echo " / __ \_/ /_/ | |  |_|  |\___ \  |  | \  ___/|  | \/ "
 echo "(____  /\____ | |____/__/____  > |__|  \___  >__|    "
 echo "     \/      \/              \/            \/        "
-echo "                          v0.1 - github.com/daanblom"
+echo "                          v$VERSION - github.com/daanblom"
 echo ""
 }
 
 check () {
-  if [ ! -d .data ] ; then
-    mkdir .data
-  fi
+  log "Checking directory structure..."
+  local dirs=("$temp_dir" "$srv_dir")
+  for dir in "${dirs[@]}"; do
+    if [ ! -d "$dir" ]; then
+      log "Creating directory: $dir"
+      mkdir -p "$dir" || {
+        log "ERROR: Failed to create directory $dir"
+        exit 1
+      }
+    fi
+  done
 
-  if [ ! -d .srv ] ; then
-    mkdir .srv
+  # Check if source.txt exists
+  if [ ! -f "source.txt" ]; then
+    log "ERROR: source.txt not found!"
+    exit 1
   fi
 }
 
 fetch () {
-  while IFS= read -r i; do
-    wget -t 10 -q --show-progress -O ".data/$(basename "$i")" "$i"
+  local total_lines=$(wc -l < source.txt)
+  local current=0
+
+  while IFS= read -r url; do
+    # Skip empty lines and comments
+    [[ -z "$url" || "$url" =~ ^[[:space:]]*# ]] && continue
+
+    ((current++))
+    local filename=$(basename "$url")
+    log "Downloading [$current/$total_lines]: $url"
+    
+    if wget -t 3 -T 30 -q --show-progress -O "$temp_dir/$filename" "$url"; then
+      log "Successfully downloaded: $filename"
+    else
+      log "WARNING: Failed to download: $url"
+    fi
   done < source.txt
 }
 
 process () {
-  cat .data/* > .srv/all.txt
-  sort -u .srv/all.txt > $output
+  log "Processing downloaded files..."
+  
+  # Check if files were downloaded
+  if [ -z "$(ls -A $temp_dir)" ]; then
+    log "ERROR: No files to process in $temp_dir"
+    exit 1
+  fi
+
+  # Combine and sort
+  cat "$temp_dir"/* > "$srv_dir/all.txt"
+  log "Removing duplicate entries..."
+  sort -u "$srv_dir/all.txt" > "$output"
+  
+  # Count 
+  local count=$(wc -l < "$output")
+  log "Generated list with $count unique entries"
 }
+
 
 cleanUp () {
-  rm -rf .data
-  rm -rf .srv
+  log "Cleaning up temporary files..."
+  rm -rf "$temp_dir"
+  rm -rf "$srv_dir"
 }
 
+# Main 
 clear
+log "Starting adlister..."
 check
 clear
 welcome
-echo "Fetching ad lists"
+log "Beginning download process..."
 fetch
 clear
 welcome
-echo "Combining into single list..."
 process
 clear
 welcome
 cleanUp
-echo "Done! The adlist.txt file has been created"
+log "Process completed successfully!"
+echo "Done! The $output file has been created with $(wc -l < "$output") entries"
