@@ -140,6 +140,10 @@ process () {
 
 
 cleanUp () {
+  log "Cleaning up comments"
+  sed -i '/^#/d' adlist.txt
+  sed -i '/^|/d' adlist.txt
+  sed -i '/^0\.0/d' adlist.txt
   log "Cleaning up temporary files..."
   rm -rf "$temp_dir"
   rm -rf "$srv_dir"
